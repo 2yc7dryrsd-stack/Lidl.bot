@@ -1,8 +1,6 @@
 name: Lidl Kontrol
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0 6 * * *'
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -12,20 +10,16 @@ jobs:
         with:
           python-version: '3.11'
       - run: pip install requests
-      - name: Test Telegram
-        run: |
+      - run: |
           python -c "
           import os, requests
-          token = os.getenv('TELEGRAM_TOKEN')
-          chat = os.getenv('CHAT_ID')
-          print(f'Token uzunluk: {len(token) if token else 0}')
-          print(f'Chat ID: {chat}')
-          url = f'https://api.telegram.org/bot{token}/getMe'
-          print(requests.get(url, timeout=10).text)
-          url2 = f'https://api.telegram.org/bot{token}/sendMessage'
-          r = requests.post(url2, json={'chat_id': chat, 'text': '✅ TEST - Lante calisti!'}, timeout=15)
-          print(f'SEND Status: {r.status_code}')
-          print(f'SEND Response: {r.text}')
+          token=os.getenv('TELEGRAM_TOKEN')
+          chat=os.getenv('CHAT_ID')
+          print(f'Chat: {chat}')
+          r=requests.get(f'https://api.telegram.org/bot{token}/getMe', timeout=10)
+          print('BOT BILGI:', r.text)
+          r2=requests.post(f'https://api.telegram.org/bot{token}/sendMessage', json={'chat_id': chat, 'text': '✅ SONUNDA CALISTI! Lante bot baglandi'}, timeout=15)
+          print(f'SEND {r2.status_code}: {r2.text}')
           "
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
