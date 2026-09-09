@@ -1,16 +1,18 @@
-import os, requests, json
+import os, requests
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
-def send(text):
-    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-    requests.post(url, json={"chat_id": CHAT_ID, "text": text, "parse_mode": "HTML"}, timeout=15)
+print(f"TOKEN var mi: {bool(TOKEN)}")
+print(f"CHAT_ID var mi: {bool(CHAT_ID)}")
+print(f"CHAT_ID: {CHAT_ID}")
 
-if not TOKEN or not CHAT_ID:
-    print("Token yok")
-    exit()
+url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+data = {"chat_id": CHAT_ID, "text": "✅ Test OK - Bot yeniden kuruldu!", "parse_mode": "HTML"}
+r = requests.post(url, json=data, timeout=20)
+print(f"Status: {r.status_code}")
+print(f"Response: {r.text}")
 
-# Test mesajı
-send("✅ <b>Lidl Bot yeniden kuruldu!</b>\nTest başarılı. Her sabah 08:00'de kontrol edecek.")
-
-print("Bot çalıştı ve mesaj gönderdi")
+if r.status_code != 200:
+    print("HATA: Telegram mesaj gönderemedi! CHAT_ID veya TOKEN yanlis")
+else:
+    print("BASARILI!")
