@@ -1,7 +1,7 @@
 name: Lidl Kontrol
 on:
   schedule:
-    - cron: '0 8 * * *' # Her gün 10:00 (Belçika saati)
+    - cron: '0 8 * * *'  # Her gün 10:00 Belçika saati
   workflow_dispatch:
 
 jobs:
@@ -13,7 +13,40 @@ jobs:
         with:
           python-version: '3.11'
       - run: pip install requests beautifulsoup4
-      - run: python lidl_check.py
+
+      - name: Lidl'i kontrol et ve Telegram'a at
+        run: |
+          python << 'PY'
+          import os, requests
+          from bs4 import BeautifulSoup
+
+          token = os.getenv('TELEGRAM_TOKEN','').strip()
+          chat_id = os.getenv('CHAT_ID','').strip()
+
+          # 1. Lidl Belçika promosyon sayfası
+          url = "https://www.lidl.be/nl/aanbiedingen"
+          try:
+              r = requests.get(url, timeout=20, headers={"User-Agent":"Mozilla/5.0"})
+              soup = BeautifulSoup(r.text, 'html.parser')
+              # Basit başlıkları al
+              titles = [t.get_text(strip=True) for t in soup.select('h3')][:5]
+              if not titles:
+                  titles = ["Yeni fırsatlar Lidl'de!"]
+              text = "🛒 *Lidl BE - Günün Fırsatları*\n\n" + "\n".join(f"• {t}" for t in titles)
+              text += f"\n\n🔗 {url}"
+          except Exception as e:
+              text = f"Lidl kontrol edildi ama sayfa okunamadı: {e}\n{url}"
+
+          # 2. Telegram'a gönder
+          api = f"https://api.telegram.org/bot{token}/sendMessage"
+          resp = requests.post(api, json={
+              "chat_id": chat_id,
+              "text": text,
+              "parse_mode": "Markdown",
+              "disable_web_page_preview": False
+          }, timeout=15)
+          print(resp.text)
+          PY
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
