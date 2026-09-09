@@ -1,6 +1,7 @@
 name: Lidl Kontrol
 on:
   workflow_dispatch:
+
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -13,13 +14,14 @@ jobs:
       - run: |
           python -c "
           import os, requests
-          token=os.getenv('TELEGRAM_TOKEN')
-          chat=os.getenv('CHAT_ID')
+          token = os.getenv('TELEGRAM_TOKEN','').strip()
+          chat = os.getenv('CHAT_ID','').strip()
+          print(f'Token uzunluk: {len(token)}')
           print(f'Chat: {chat}')
-          r=requests.get(f'https://api.telegram.org/bot{token}/getMe', timeout=10)
+          r = requests.get(f'https://api.telegram.org/bot{token}/getMe', timeout=15)
           print('BOT BILGI:', r.text)
-          r2=requests.post(f'https://api.telegram.org/bot{token}/sendMessage', json={'chat_id': chat, 'text': '✅ SONUNDA CALISTI! Lante bot baglandi'}, timeout=15)
-          print(f'SEND {r2.status_code}: {r2.text}')
+          r2 = requests.post(f'https://api.telegram.org/bot{token}/sendMessage', json={'chat_id': chat, 'text': '✅ Bot düzeldi! 404 çözüldü.'}, timeout=15)
+          print('SEND:', r2.text)
           "
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
