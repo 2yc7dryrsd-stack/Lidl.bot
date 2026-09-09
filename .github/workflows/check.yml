@@ -1,5 +1,7 @@
 name: Lidl Kontrol
 on:
+  schedule:
+    - cron: '0 8 * * *' # Her gün 10:00 (Belçika saati)
   workflow_dispatch:
 
 jobs:
@@ -10,19 +12,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: pip install requests
-      - run: |
-          python -c "
-          import os, requests
-          token = os.getenv('TELEGRAM_TOKEN','').strip()
-          chat = os.getenv('CHAT_ID','').strip()
-          print(f'Token uzunluk: {len(token)}')
-          print(f'Chat: {chat}')
-          r = requests.get(f'https://api.telegram.org/bot{token}/getMe', timeout=15)
-          print('BOT BILGI:', r.text)
-          r2 = requests.post(f'https://api.telegram.org/bot{token}/sendMessage', json={'chat_id': chat, 'text': '✅ Bot düzeldi! 404 çözüldü.'}, timeout=15)
-          print('SEND:', r2.text)
-          "
+      - run: pip install requests beautifulsoup4
+      - run: python lidl_check.py
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
