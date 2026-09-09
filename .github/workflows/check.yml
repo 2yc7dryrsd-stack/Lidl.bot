@@ -1,9 +1,8 @@
 name: Lidl Kontrol
 on:
   schedule:
-    - cron: '0 8 * * *'  # Her gün 10:00 Belçika saati
+    - cron: '0 8 * * *'
   workflow_dispatch:
-
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -13,39 +12,48 @@ jobs:
         with:
           python-version: '3.11'
       - run: pip install requests beautifulsoup4
-
-      - name: Lidl'i kontrol et ve Telegram'a at
-        run: |
+      - run: |
           python << 'PY'
-          import os, requests
+          import os, requests, re
           from bs4 import BeautifulSoup
 
           token = os.getenv('TELEGRAM_TOKEN','').strip()
           chat_id = os.getenv('CHAT_ID','').strip()
 
-          # 1. Lidl Belçika promosyon sayfası
-          url = "https://www.lidl.be/nl/aanbiedingen"
-          try:
-              r = requests.get(url, timeout=20, headers={"User-Agent":"Mozilla/5.0"})
-              soup = BeautifulSoup(r.text, 'html.parser')
-              # Basit başlıkları al
-              titles = [t.get_text(strip=True) for t in soup.select('h3')][:5]
-              if not titles:
-                  titles = ["Yeni fırsatlar Lidl'de!"]
-              text = "🛒 *Lidl BE - Günün Fırsatları*\n\n" + "\n".join(f"• {t}" for t in titles)
-              text += f"\n\n🔗 {url}"
-          except Exception as e:
-              text = f"Lidl kontrol edildi ama sayfa okunamadı: {e}\n{url}"
+          urls = [
+              "https://www.lidl.be/c/nl-BE/folder",
+              "https://www.lidl.be/nl/folder"
+          ]
 
-          # 2. Telegram'a gönder
-          api = f"https://api.telegram.org/bot{token}/sendMessage"
-          resp = requests.post(api, json={
-              "chat_id": chat_id,
-              "text": text,
-              "parse_mode": "Markdown",
-              "disable_web_page_preview": False
-          }, timeout=15)
-          print(resp.text)
+          found = []
+          for url in urls:
+              try:
+                  r = requests.get(url, headers={"User-Agent":"Mozilla/5.0"}, timeout=20)
+                  text = r.text.lower()
+                  # %70 ve %90 ara
+                  if re.search(r'70\s*%|%70|-70', text) or re.search(r'90\s*%|%90|-90', text):
+                      # Başlıkları da topla
+                      soup = BeautifulSoup(r.text, 'html.parser')
+                      # sayfadaki tüm yazılarda %70 %90 geçenleri al
+                      for el in soup.find_all(text=re.compile(r'(70|90)\s*%')):
+                          t = el.strip()
+                          if len(t) < 150 and t not in found:
+                              found.append(t)
+              except:
+                  pass
+
+          if found:
+              # Sadece %70 ve %90 olanlar
+              filtered = [f for f in found if '70' in f or '90' in f][:10]
+              msg = "🔥 *Sadece %70 ve %90 Fırsatlar!*\n\n" + "\n".join(f"• {x}" for x in filtered)
+              msg += "\n\n🔗 https://www.lidl.be/c/nl-BE/folder"
+          else:
+              # Lidl sitesi resim tabanlı olduğu için bazen % yazısı çıkmıyor
+              # O yüzden en azından link atalım, sen kontrol et
+              msg = "ℹ️ Bugün otomatik taramada %70 / %90 etiketi bulunamadı (Lidl folder'ı resim olarak yüklüyor).\n\nAma yine de folder'ı kontrol et:\n🔗 https://www.lidl.be/c/nl-BE/folder"
+
+          requests.post(f"https://api.telegram.org/bot{token}/sendMessage",
+              json={"chat_id": chat_id, "text": msg, "parse_mode": "Markdown"}, timeout=15)
           PY
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
